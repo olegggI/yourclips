@@ -1,18 +1,18 @@
 <?php
 
 class Server {
-	/** РљС–Р»СЊРєС–СЃС‚СЊ РІС–РґРµРѕ Сѓ РІС–РґРїРѕРІС–РґС– * */
+	/** Кількість відео у відповіді * */
 
 	const NUMBER_OF_PACKET = 6;
 	
 	private $user_id; // vk id
-	private $dbc; // РѕР±СЊРµРєС‚ Р±Р°Р·С‹
+	private $dbc; // обьект базы
 
 	public function __construct($db) {
 		$this->dbc = new Base($db);
 	}
 
-	/** Р¤СѓРЅРєС†РёСЏ РїРѕР»СѓС‡РµРЅРёРµ РјР°СЃСЃРёРІР° Р°СѓРґРёРѕР·Р°РїРёСЃРµР№ * */
+	/** Функция получение массива аудиозаписей * */
 	public function getPlayList($access_token, $user_id) {
 		$this->user_id = $user_id;
 		$query = (array) json_decode(file_get_contents('https://api.vk.com/method/audio.get?uid=' . $user_id . '&access_token=' . $access_token));
@@ -26,7 +26,7 @@ class Server {
 		$string = '<ul class="thumbnails piska" style="display: none;">';
 		for ($i = $_GET['num_of_video']; $i < $_GET['num_of_video'] + $requests_numbers && $i < count($query); $i++) {
 			$query[$i] = (array) $query[$i];
-			/// С‚СѓС‚ С‚СЂРµР±Р° РїРµСЂРµРІС–СЂСЏС‚СЊ РЅР° РєРѕРґ РєР»С–РїР°, Р° РЅРµ РЅР° СЋС‚СЋР± Р°Р№РґС–. РІС–РґРµРѕ Р±СЂР°С‚СЊ РІР¶Рµ РїРѕС‚С–Рј - Р±Рѕ РіСЂСѓР·РёС‚РёРјРµ СЃС–СЃС‚С”РјСѓ
+			/// тут треба перевірять на код кліпа, а не на ютюб айді. відео брать вже потім - бо грузитиме сістєму
 			$q = "SELECT c.id AS cid, c.youtube_id AS video, c.name AS c_name, a.name AS a_name, a.code AS a_code, c.code AS c_code
 						FROM clip c
 						LEFT JOIN artist a ON a.id = c.artist_id
@@ -38,9 +38,9 @@ class Server {
 				$string .= $this->returnOurVideo($clip);
 			} else {
 				$vidos = (string) $this->getVideos($query[$i]["artist"], $query[$i]["title"]);
-				if ($vidos != 'Array' && !empty($vidos)) { // РµСЃР»Рё РЅР°С€Р»Рё РєР»РёРї
+				if ($vidos != 'Array' && !empty($vidos)) { // если нашли клип
 					$string .= $this->addAndReturnClipBody($query[$i]["artist"], $query[$i]["title"], $vidos);
-				} else { // РµСЃР»Рё РЅРµ РЅР°С€Р»Рё
+				} else { // если не нашли
 					$string .= $this->returnClipError($query[$i]["artist"], $query[$i]["title"]);
 				}
 			}
@@ -49,7 +49,7 @@ class Server {
 		die(json_encode(array("packeds" => $string)));
 	}
 
-	/** Р¤СѓРЅРєС†РёСЏ РїРѕР»СѓС‡РµРЅРёРµ РјР°СЃСЃРёРІР° Р°СѓРґРёРѕР·Р°РїРёСЃРµР№ * */
+	/** Функция получение массива аудиозаписей * */
 	public function getVideos($artist, $title) {
 
 		$artist = $this->getRequestForYoutube($artist);
@@ -68,12 +68,12 @@ class Server {
 
 	/*
 	 * 
-	 * Return-Р¬РћР Р
+	 * Return-ЬОРИ
 	 * 
 	 */
 
 	private function returnClipError($a_name, $c_name) {
-		$a_c = "РљР»РёРїРµС† $a_name  - $c_name РЅРµ Р·Р°РіСЂСѓР¶РµРЅ :(";
+		$a_c = "Клипец $a_name  - $c_name не загружен :(";
 		$body = '<img class="image_block" src="http://placehold.it/120x120" alt="ALT NAME" />
 						  <div class="caption block_clip">
 							<p>' . $a_c . '</p>
@@ -85,13 +85,13 @@ class Server {
 		$c_code = $this->getCpu($c_name);
 		$a_code = $this->getCpu($a_name);
 
-		$query = "SELECT * FROM artist WHERE code LIKE '" . $a_code . "'"; // РёС‰РµРј РїРѕ РєРѕРґСѓ
+		$query = "SELECT * FROM artist WHERE code LIKE '" . $a_code . "'"; // ищем по коду
 		$author = $this->dbc->getRow($query);
 
-		if (!empty($author)) { // РµСЃР»Рё СѓР¶Рµ РµСЃС‚СЊ Р°СЂС‚РёСЃС‚ - РґРѕР±Р°РІР»СЏРµРј С‚РѕР»СЊРєРѕ РєР»РёРї Рє РЅРµРјСѓ
+		if (!empty($author)) { // если уже есть артист - добавляем только клип к нему
 			$id_clip = $this->dbc->addClip($c_name, $c_code, $video_code, $author['id']);
 			$this->formPlayList($id_clip);
-		} else { // РµСЃР»Рё РЅРµС‚ Р°СЂС‚РёСЃС‚Р°, РґРѕР±Р°РІР»СЏРµРј Р°СЂС‚РёСЃС‚Р° Р° РїРѕС‚РѕРј РєР»РёРї Рє РЅРµРјСѓ
+		} else { // если нет артиста, добавляем артиста а потом клип к нему
 			$id_clip = $this->dbc->addClip($c_name, $c_code, $video_code, $this->dbc->addArtist($a_name, $a_code));
 			$this->formPlayList($id_clip);
 		}
@@ -114,10 +114,10 @@ class Server {
 	}
 
 	private function getCpu($title) {
-		$trans = array("Р°" => "a",
-			"Р±" => "b", "РІ" => "v", "Рі" => "g", "Рґ" => "d", "Рµ" => "e", "С‘" => "yo", "Р¶" => "j", "Р·" => "z", "Рё" => "i", "С–" => "i", "С–" => "i", "Р№" => "i", "Рє" => "k", "Р»" => "l", "Рј" => "m", "РЅ" => "n", "Рѕ" => "o", "Рї" => "p", "СЂ" => "r", "СЃ" => "s", "С‚" => "t", "Сѓ" => "y", "С„" => "f", "С…" => "h", "С†" => "c", "С‡" => "ch", "С€" => "sh", "С‰" => "sh", "С‹" => "i", "СЌ" => "e", "СЋ" => "u", "СЏ" => "ya",
-			"Рђ" => "A", "Р‘" => "B", "Р’" => "V", "Р“" => "G", "Р”" => "D", "Р•" => "E", "РЃ" => "Yo", "Р–" => "J", "Р—" => "Z", "Р" => "I", "Р†" => "I", "Р™" => "I", "Рљ" => "K", "Р›" => "L", "Рњ" => "M", "Рќ" => "N", "Рћ" => "O", "Рџ" => "P", "Р " => "R", "РЎ" => "S", "Рў" => "T", "РЈ" => "Y", "Р¤" => "F", "РҐ" => "H", "Р¦" => "C", "Р§" => "Ch", "РЁ" => "Sh", "Р©" => "Sh", "Р«" => "I", "Р­" => "E", "Р®" => "U", "РЇ" => "Ya", "С”" => "ye", "Р„" => "Ye",
-			"СЊ" => "", "Р¬" => "", "СЉ" => "", "РЄ" => "");
+		$trans = array("а" => "a",
+			"б" => "b", "в" => "v", "г" => "g", "д" => "d", "е" => "e", "ё" => "yo", "ж" => "j", "з" => "z", "и" => "i", "і" => "i", "і" => "i", "й" => "i", "к" => "k", "л" => "l", "м" => "m", "н" => "n", "о" => "o", "п" => "p", "р" => "r", "с" => "s", "т" => "t", "у" => "y", "ф" => "f", "х" => "h", "ц" => "c", "ч" => "ch", "ш" => "sh", "щ" => "sh", "ы" => "i", "э" => "e", "ю" => "u", "я" => "ya",
+			"А" => "A", "Б" => "B", "В" => "V", "Г" => "G", "Д" => "D", "Е" => "E", "Ё" => "Yo", "Ж" => "J", "З" => "Z", "И" => "I", "І" => "I", "Й" => "I", "К" => "K", "Л" => "L", "М" => "M", "Н" => "N", "О" => "O", "П" => "P", "Р" => "R", "С" => "S", "Т" => "T", "У" => "Y", "Ф" => "F", "Х" => "H", "Ц" => "C", "Ч" => "Ch", "Ш" => "Sh", "Щ" => "Sh", "Ы" => "I", "Э" => "E", "Ю" => "U", "Я" => "Ya", "є" => "ye", "Є" => "Ye",
+			"ь" => "", "Ь" => "", "ъ" => "", "Ъ" => "");
 		$text = strtr($title, $trans);
 		$cpu = str_replace(' ', '-', $text);
 		$cpu = str_replace('--', '-', $cpu);
@@ -127,11 +127,11 @@ class Server {
 	private function getRequestForYoutube($title) {
 		$cpu = str_replace(' ', '+', $title);
 		$cpu = str_replace('  ', '+', $cpu);
-		return preg_replace('/[^a-zA-ZР°-СЏРђ-РЇ+0-9]+/i', '', $cpu);
+		return preg_replace('/[^a-zA-Zа-яА-Я+0-9]+/i', '', $cpu);
 	}
 
 	/*
-	 * РџСЂРёРІСЏР·СѓС” С‡СѓРІР°РєР° РґРѕ РєР»С–РїР°
+	 * Привязує чувака до кліпа
 	 */
 
 	private function formPlayList($clip_id) {
