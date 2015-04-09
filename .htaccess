@@ -1,0 +1,17 @@
+Options +SymLinksIfOwnerMatch
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteEngine On
+RewriteBase /
+Allow from all
+ErrorDocument 404 /errorpage404.html
+
+RewriteCond %{HTTP_HOST} ^www.music.natirka.com$ [NC] 
+RewriteRule ^(.*)$ http://music.natirka.com/$1 [R=301,L]
+
+RewriteRule ^zarubezhnye/page/([0-9]+) artist-list.php?nom=1&page=$1
+RewriteRule ^([A-Za-z0-9-_]+)\/([A-Za-z0-9-_]+) clip.php?artist_code=$1&clip_code=$2
+RewriteRule ^([A-Za-z0-9-_]+)/ artist.php?artist_code=$1
+RewriteRule ^zarubezhnye video.php?nom=1&page=1
+ 
+
+RewriteRule ^news/([A-Za-z0-9-_]+) /news.php?cpu=$1

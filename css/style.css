@@ -1,0 +1,50 @@
+.block_clip {
+	height: 30px;
+	overflow: hidden;
+}
+img.image_block {
+	max-height: 100px;
+	margin-right: 10px; 
+}
+.maincontainer {
+	max-width: 1000px;
+	margin: 0 auto;
+}
+body {overflow-y: scroll; }
+.ptext {font-size: 14px}
+
+.videoWrapper {
+	position: relative;
+	padding-bottom: 56.25%; /* 16:9 */
+}
+.videoWrapper iframe { 
+	width: 100%;
+	height: 100%;
+	max-width: 700px;
+	max-height: 400px;
+	min-height: 300px;
+}
+
+
+.clip-main-block:nth-child(1n+1) {
+	margin-left: 0px;
+	margin-bottom: 5px;
+}
+
+.clip-main-block .clip-main-link:hover {
+	background-color: lightsteelblue;
+}
+.obvodka {
+	background-color: lightsteelblue;
+}
+
+.navigation {margin-bottom: 10px; float: left; }
+
+h1, h2, h3 {line-height: 15px; clear: both;}
+
+.btn-mini {
+	padding: 0 3px;
+	margin-top: 6px;
+	float: right;
+}
+.span12 { width: 1000px;}
